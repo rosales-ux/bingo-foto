@@ -860,21 +860,24 @@ let nextId = 1;
 let addCountVal = 1;
 let editingCardIdx = 0;  // which card is being edited in modal
 
-// ── GENERATE RANDOM CARD ──
+// ── GENERATE EMPTY CARD ──
 function generateGrid() {
-  const grid = [];
-  COLS.forEach((col, ci) => {
-    const [min, max] = RANGES[col];
-    const pool = Array.from({length: max-min+1}, (_,i) => min+i);
-    const picked = [];
-    while (picked.length < 5) {
-      const i = Math.floor(Math.random() * pool.length);
-      picked.push(pool.splice(i,1)[0]);
-    }
-    grid.push(picked);
-  });
-  grid[2][2] = null; // FREE center
-  return grid;
+  // Empty grid — user fills in their own numbers
+  const grid = [
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,null,0],  // null = FREE center at [2][2]... wait, col N is index 2
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+  ];
+  // grid[col][row], FREE = grid[2][2]
+  return [
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,null,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+  ];
 }
 
 // ── MARK NUMBER ──
@@ -966,10 +969,11 @@ function renderCards() {
       for (let col=0; col<5; col++) {
         const num = card.grid[col][row];
         const isFree = num === null;
-        const isMarked = !isFree && card.marked.has(num);
+        const isEmpty = num === 0;
+        const isMarked = !isFree && !isEmpty && card.marked.has(num);
         let cls = isFree ? 'free' : (isMarked ? 'marked' : '');
-        cells += `<div class="card-cell ${cls}" onclick="toggleCellManual(${idx},${num??-1},this)">
-          ${isFree ? 'LIBRE' : num}
+        cells += `<div class="card-cell ${cls}" style="${isEmpty ? 'color:#ddd;' : ''}" onclick="toggleCellManual(${idx},${num??-1},this)">
+          ${isFree ? 'LIBRE' : (isEmpty ? '—' : num)}
         </div>`;
       }
     }
@@ -1012,6 +1016,11 @@ function addCards() {
   }
   closeAddModal();
   renderCards();
+  // Open edit modal immediately so user can fill numbers
+  editingCardIdx = cards.length - 1;
+  buildEditGrid();
+  buildCardSelector();
+  document.getElementById('editModal').classList.add('show');
 }
 
 function deleteCard(idx) {
@@ -1092,7 +1101,7 @@ function buildEditGrid() {
       html += `<div class="edit-cell${isFree?' free-cell':''}">
         <input type="number" inputmode="numeric" pattern="[0-9]*"
           min="1" max="75" data-col="${col}" data-row="${row}"
-          value="${isFree ? '' : num}"
+          value="${isFree ? '' : (num === 0 ? '' : num)}"
           ${isFree ? 'readonly placeholder="LIBRE"' : ''}
         >
       </div>`;
